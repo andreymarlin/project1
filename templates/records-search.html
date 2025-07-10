@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{{ super() }}
+{% for cat, msg in get_flashed_messages(True) %}
+<div class="flash {{cat}}">{{msg}}</div>
+{% endfor %}
+<form action="/records-search" method="post" class="form-records-search">
+<p><label>Query:</label>
+<p><textarea name="query" rows=7 cols=40></textarea>
+<p><input type="submit" value="Search" />
+</form>
+{% endblock %}
