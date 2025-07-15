@@ -63,7 +63,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 #MODEL
-MODEL_NAME = "sentence-transformers/distilbert-base-nli-mean-tokens"
+MODEL_NAME = "sentence-transformers/distilbert-tiny-nli-mean-tokens"
 EMBEDDING_DIM = 768
 
 def calculate_embeddings(data_entity, model_name=MODEL_NAME):
@@ -80,27 +80,24 @@ DB_PORT = "5432"
 
 connection = f"dbname={DB_NAME} user={DB_USER} password={DB_PASSWORD} host={DB_HOST} port={DB_PORT}"
 
-try:
-    FILE_PATH = '/home/glushenko/Desktop/project1/data/1Mlines-RUSMARC-PubLib_utf-8.txt'
-
+def parsing(rec_id = 0):
     records = {}
-    current_rec = []
-    rec_id = 0
-
-    def parsing():
-        with open(FILE_PATH, 'r', encoding='utf-8') as f:
-            for line in f:
-                stripped_line = line.strip()
-                # If the separator ***** was found, then record is complete
-                if stripped_line == '*****':
-                    current = ''.join(current_rec).strip()
-                    records[str(rec_id)] = current
-                    rec_id += 1
-                else:
-                    current_rec.append(line.rstrip(' '))
-            #json_output = json.dums(records, indent=4, ensure_ascii=False)
-            #return json_output
-            return records
+    current_rec = [] 
+    FILE_PATH = '/home/glushenko/Desktop/project1/data/1Mlines-RUSMARC-PubLib_utf-8.txt'
+    with open(FILE_PATH, 'r', encoding='utf-8') as f:
+        for line in f:
+            stripped_line = line.strip()
+            # If the separator ***** was found, then record is complete
+            if stripped_line == '*****':
+                current = ''.join(current_rec).strip()
+                records[str(rec_id)] = current
+                rec_id += 1
+            else:
+                current_rec.append(line.rstrip(' '))
+        #json_output = json.dums(records, indent=4, ensure_ascii=False)
+        #return json_output
+        return records
+try:    
     # json_result = parsing()
 
     recs = parsing()
