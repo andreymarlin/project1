@@ -2,7 +2,7 @@ import os
 import sqlite3
 
 from flask import Flask, render_template, url_for, request, flash, g, jsonify
-from FDataBase import FDataBase
+from searchdb import search
 
 # config
 DATABASE = "/home/glushenko/Desktop/project1/project1/flsite.db"
@@ -52,11 +52,7 @@ def about():
         if len(request.form['query']) > 0:
             flash('Search is in process.', category='success')
             dict1 = {'query':request.form['query']}
-            print(dict1)
-            db = get_db()
-            dbase = FDataBase(db)
-            list_results = dbase.find_query(request.form['query'])
-            print(list_results)
+            search(dict1['query'])
         else:
             flash('Incorrect query.', category='error')
     return render_template("records-search.html", title='Search', menu = menu)

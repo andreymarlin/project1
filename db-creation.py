@@ -79,6 +79,7 @@ DB_HOST = "localhost"
 DB_PORT = "5432"
 
 connection = f"dbname={DB_NAME} user={DB_USER} password={DB_PASSWORD} host={DB_HOST} port={DB_PORT}"
+
 try:
     FILE_PATH = '/home/glushenko/Desktop/project1/data/1Mlines-RUSMARC-PubLib_utf-8.txt'
 
@@ -125,8 +126,9 @@ try:
                     (rec, rec_emb)
                 )
             conn.commit()
+            print(f"{len(recs)} records have been added to db.")
 
 except psycopg.OperationalError as e:
     print(f"DB connection error: {e}")
 except Exception as e:
-    print(f'')
+    print(f'An error has occured: {e}')
