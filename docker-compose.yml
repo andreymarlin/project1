@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  db:
+    # Using official image with pgvector for PostgreSQL 16
+    image: pgvector/pgvector:pg16
+    container_name: postgres_vector_db
+    restart: always
+    environment:
+      POSTGRES_DB: vectordb
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password12345
+    ports:
+    - "5432:5432"
+    volumes:
+    - pgdata:/home/glushenko/Desktop/project1/project1
+
+volumes:
+  pgdata
