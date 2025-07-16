@@ -61,9 +61,10 @@
 import psycopg
 import numpy as np
 from sentence_transformers import SentenceTransformer
+from pgvector.psycopg import register_vector
 
 #MODEL
-MODEL_NAME = "sentence-transformers/distilbert-tiny-nli-mean-tokens"
+MODEL_NAME = "sentence-transformers/distilbert-base-nli-mean-tokens"
 EMBEDDING_DIM = 768
 
 def calculate_embeddings(data_entity, model_name=MODEL_NAME):
@@ -87,13 +88,15 @@ def parsing(rec_id = 0):
     with open(FILE_PATH, 'r', encoding='utf-8') as f:
         for line in f:
             stripped_line = line.strip()
-            # If the separator ***** was found, then record is complete
-            if stripped_line == '*****':
-                current = ''.join(current_rec).strip()
-                records[str(rec_id)] = current
-                rec_id += 1
-            else:
-                current_rec.append(line.rstrip(' '))
+            if stripped_line:
+                # If the separator ***** was found, then record is complete
+                if stripped_line == '*****':
+                    current = ''.join(current_rec).strip()
+                    records[str(rec_id)] = current
+                    rec_id += 1
+                    current_rec = []
+                else:
+                    current_rec.append(stripped_line.rstrip(' '))
         #json_output = json.dums(records, indent=4, ensure_ascii=False)
         #return json_output
         return records
@@ -103,23 +106,28 @@ try:
     recs = parsing()
     
     with psycopg.connect(connection) as conn:
-        with conn.cursor() as cur:
-            cur.execute("CREATE EXTENTION IF NOT EXISTS vector;")
 
+        register_vector(conn)
+
+        with conn.cursor() as cur:
+            cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+            conn.commit()
+            
             cur.execute(
                 f"""
-                CREATE TABLE IF NOT EXISTS cards (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                CREATE TABLE IF NOT EXISTS cards3 (
+                id SERIAL PRIMARY KEY,
                 content TEXT,
                 embedding VECTOR({EMBEDDING_DIM})
                 );
                 """
             )
+            conn.commit()
 
             for rec in recs:
                 rec_emb = calculate_embeddings(rec)
                 cur.execute(
-                    "INSERT INTO cards (content, embedding) VALUES (%s, %s)",
+                    "INSERT INTO cards3 (content, embedding) VALUES (%s, %s)",
                     (rec, rec_emb)
                 )
             conn.commit()
