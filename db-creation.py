@@ -58,19 +58,35 @@
 
 # import os
 # import json
+import torch
 import psycopg
+import re
 import numpy as np
+import time
+import gc
 from sentence_transformers import SentenceTransformer
 from pgvector.psycopg import register_vector
 
-#MODEL
-MODEL_NAME = "sentence-transformers/distilbert-base-nli-mean-tokens"
-EMBEDDING_DIM = 768
+# MODEL 1
+# MODEL_NAME = "sentence-transformers/distilbert-base-nli-mean-tokens"
+# EMBEDDING_DIM = 768
 
-def calculate_embeddings(data_entity, model_name=MODEL_NAME):
-    model = SentenceTransformer(model_name)
-    embedding = model.encode(data_entity)
-    return embedding
+# MODEL 2
+MODEL_NAME = "ai-forever/sbert_large_nlu_ru"
+EMBEDDING_DIM = 1024
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+model = SentenceTransformer(MODEL_NAME).to(device)
+
+def calculate_embeddings(data_entity: list[str]):
+    with torch.no_grad():
+        embeddings = model.encode(data_entity, convert_to_tensor=True)
+        data = embeddings.cpu().numpy().tolist()
+    return data
+
+def chunk_generator(data_list, batch_size):
+    for i in range(0, len(data_list), batch_size):
+        yield data_list[i:i + batch_size]
 
 #DB CONFIG
 DB_NAME = "vectordb"
@@ -80,9 +96,10 @@ DB_HOST = "localhost"
 DB_PORT = "5432"
 
 connection = f"dbname={DB_NAME} user={DB_USER} password={DB_PASSWORD} host={DB_HOST} port={DB_PORT}"
+pattern = r'\^[A-Z]'
 
 def parsing(rec_id = 0):
-    records = {}
+    records = []
     current_rec = [] 
     FILE_PATH = '/home/glushenko/Desktop/project1/data/1Mlines-RUSMARC-PubLib_utf-8.txt'
     with open(FILE_PATH, 'r', encoding='utf-8') as f:
@@ -92,30 +109,29 @@ def parsing(rec_id = 0):
                 # If the separator ***** was found, then record is complete
                 if stripped_line == '*****':
                     current = ''.join(current_rec).strip()
-                    records[str(rec_id)] = current
+                    records.append(current)
                     rec_id += 1
                     current_rec = []
                 else:
-                    current_rec.append(stripped_line.rstrip(' '))
+                    if "#200: " not in stripped_line:
+                        cleaned = re.sub(pattern, ' ', stripped_line)
+                        current_rec.append(cleaned.rstrip(' '))
         #json_output = json.dums(records, indent=4, ensure_ascii=False)
         #return json_output
         return records
-try:    
-    # json_result = parsing()
 
-    recs = parsing()
-    
+def process_batch(batch):    
     with psycopg.connect(connection) as conn:
 
         register_vector(conn)
 
         with conn.cursor() as cur:
-            cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
-            conn.commit()
-            
+            # cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+            # conn.commit()
+
             cur.execute(
                 f"""
-                CREATE TABLE IF NOT EXISTS cards3 (
+                CREATE TABLE IF NOT EXISTS cards7 (
                 id SERIAL PRIMARY KEY,
                 content TEXT,
                 embedding VECTOR({EMBEDDING_DIM})
@@ -123,15 +139,31 @@ try:
                 """
             )
             conn.commit()
-
-            for rec in recs:
-                rec_emb = calculate_embeddings(rec)
+            
+            batch_emb = calculate_embeddings(batch)
+            for i in range(len(batch)):
                 cur.execute(
-                    "INSERT INTO cards3 (content, embedding) VALUES (%s, %s)",
-                    (rec, rec_emb)
+                    "INSERT INTO cards7 (content, embedding) VALUES (%s, %s)",
+                    (batch[i], batch_emb[i])
                 )
             conn.commit()
-            print(f"{len(recs)} records have been added to db.")
+            print(f"{len(batch)} records have been added to db.")
+
+try:    
+    # json_result = parsing()
+
+    recs = parsing()
+    print(len(recs))
+    xk = 0
+
+    for batch in chunk_generator(recs, 100):
+        process_batch(batch)
+        xk += 100
+        print(f"{xk} cards has been transferred.")
+    
+    gc.collect()
+    
+    time.sleep(1)
 
 except psycopg.OperationalError as e:
     print(f"DB connection error: {e}")

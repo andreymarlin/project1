@@ -1,6 +1,14 @@
 import psycopg
 import numpy as np
-from modelemb import calculate_embeddings
+import torch
+from sentence_transformers import SentenceTransformer
+
+#MODEL
+MODEL_NAME = "ai-forever/sbert_large_nlu_ru"
+EMBEDDING_DIM = 1024
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+model = SentenceTransformer(MODEL_NAME).to(device)
 
 #DB CONFIG
 DB_NAME = "vectordb"
@@ -9,32 +17,41 @@ DB_PASSWORD = "password12345"
 DB_HOST = "localhost"
 DB_PORT = "5432"
 
-def search(query):
+def calculate_embeddings(data_entity: list[str]):
+    with torch.no_grad():
+        embeddings = model.encode(data_entity, convert_to_tensor=True)
+        data = embeddings.cpu().numpy().tolist()
+    return data
+
+def searchdb(query: str):
     query_emb = calculate_embeddings(query)
 
     connection = f"dbname={DB_NAME} user={DB_USER} password={DB_PASSWORD} host={DB_HOST} port={DB_PORT}"
 
     try:
         with psycopg.connect(connection) as conn:
-            with conn.sursor() as cur:
+            with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, content, 1 - (embedding <=> %s) AS cosine_similarity
-                    FROM cards
-                    ORDER BY embedding <=> %s
+                    SELECT id, content, 1 - (embedding <=> %s::vector(1024)) AS cosine_similarity
+                    FROM cards6
+                    ORDER BY embedding <=> %s::vector(1024)
                     LIMIT %s
                     """,
-                    (query_emb, query_emb, 10)
+                    (str(query_emb), str(query_emb), 10)
                 )
 
                 results = cur.fetchall()
                 if not results:
-                    print("Nothing has been found.")
+                    return(["Nothing has been found."])
                 else:
+                    results_list = []
                     for row in results:
                         doc_id, content, similarity = row
-                        print(f"ID: {doc_id}, similriy: {similarity:.4f}, card: {content}.")
+                        results_list.append(f"ID: {doc_id}, \nsimilarity: {similarity:.4f}, \ncard: {content}.\n")
+                    return results_list
+
     except psycopg.OperationalError as e:
-        print(f"DB connection error: {e}")
+        return(["DB connection error: {e}"])
     except Exception as e:
-        print(f'An error has occured: {e}')
+        return(['An error has occured: {e}'])

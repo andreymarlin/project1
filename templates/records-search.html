@@ -10,4 +10,15 @@
 <p><textarea name="query" rows=7 cols=40></textarea>
 <p><input type="submit" value="Search" />
 </form>
+
+{% if results %}
+    <h2>Результаты поиска:</h2>
+    <ul class="search-results">
+        {% for item in results %}
+            <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+{% elif results is defined and not formatted_results %}
+    <p>По вашему запросу ничего не найдено.</p>
+{% endif %}
 {% endblock %}
