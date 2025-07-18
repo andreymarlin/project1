@@ -34,7 +34,7 @@ def searchdb(query: str):
                 cur.execute(
                     """
                     SELECT id, content, 1 - (embedding <=> %s::vector(1024)) AS cosine_similarity
-                    FROM cards6
+                    FROM cards7
                     ORDER BY embedding <=> %s::vector(1024)
                     LIMIT %s
                     """,
