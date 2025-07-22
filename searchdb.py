@@ -24,7 +24,8 @@ def calculate_embeddings(data_entity: list[str]):
     return data
 
 def searchdb(query: str):
-    query_emb = calculate_embeddings(query)
+    query_em = model.encode(query, convert_to_tensor=True)
+    q_emb = query_em.cpu().numpy().tolist()
 
     connection = f"dbname={DB_NAME} user={DB_USER} password={DB_PASSWORD} host={DB_HOST} port={DB_PORT}"
 
@@ -34,11 +35,11 @@ def searchdb(query: str):
                 cur.execute(
                     """
                     SELECT id, content, 1 - (embedding <=> %s::vector(1024)) AS cosine_similarity
-                    FROM cards7
+                    FROM cards12
                     ORDER BY embedding <=> %s::vector(1024)
                     LIMIT %s
                     """,
-                    (str(query_emb), str(query_emb), 10)
+                    (str(q_emb), str(q_emb), 10)
                 )
 
                 results = cur.fetchall()

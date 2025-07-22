@@ -3,6 +3,7 @@ import sqlite3
 
 from flask import Flask, render_template, url_for, request, flash, g, jsonify
 from searchdb import searchdb
+from searchagent import searchagent
 
 # config
 DATABASE = "/home/glushenko/Desktop/project1/project1/flsite.db"
@@ -52,9 +53,12 @@ def about():
         if len(request.form['query']) > 0:
             flash('Search is in process.', category='success')
             dict1 = {'query':request.form['query']}
-            search_results = searchdb(dict1['query'])
-            formatted_results = "\n\n".join(map(str, search_results))
-            flash(formatted_results)
+            search_results = searchagent(dict1['query'])
+            #formatted_results = "\n\n".join(map(str, search_results))
+            # for result in search_results:
+            #     flash(result)
+            # flash(formatted_results)
+            flash(search_results)
         else:
             flash('Incorrect query.', category='error')
     return render_template("records-search.html", title='Search', menu = menu)
