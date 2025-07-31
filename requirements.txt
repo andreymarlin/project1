@@ -1,3 +1,7 @@
 sentence-transformers
-psycopg[binary]
 numpy
+torch
+re
+pgvector
+psycopg
+flask
